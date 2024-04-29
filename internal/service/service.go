@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/LKarataev/BookingAPI/internal/dao"
 	"github.com/LKarataev/BookingAPI/internal/handlers"
 	"github.com/LKarataev/BookingAPI/internal/logger"
@@ -22,43 +24,34 @@ type Order struct {
 type BookingApi struct {
 	ordersRepo           dao.OrdersRepositoryInterface
 	roomAvailabilityRepo dao.RoomAvailabilityRepositoryInterface
-	logger               logger.Logger
 }
 
-func NewBookingApi(
-    ordersRepo           dao.OrdersRepositoryInterface,
-    roomAvailabilityRepo dao.RoomAvailabilityRepositoryInterface,
-	logger 		  		 logger.Logger,
-) BookingApi {
+func NewInMemoryBookingApi() BookingApi {
+	ordersRepo := dao.NewOrdersRepository()
+	roomAvailabilityRepo := dao.NewRoomAvailabilityRepository()
 	return BookingApi{
 		ordersRepo:           ordersRepo,
 		roomAvailabilityRepo: roomAvailabilityRepo,
-		logger:               logger,
 	}
 }
 
-func (api *BookingApi) ConfigureRouter() *http.ServeMux {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/orders", api.orders)
-	return mux
+func (api *BookingApi) ConfigureRouter() *chi.Mux {
+	router := chi.NewRouter()
+	router.Post("/orders", api.createOrder)
+	return router
 }
-
-func (api *BookingApi) orders(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		api.getOrders(w, r)
-	case http.MethodPost:
-		api.createOrder(w, r)
-	default:
-		http.Error(w, `{"error":"bad method"}`, http.StatusNotAcceptable)
-	}
-}
-
-func (api *BookingApi) getOrders(w http.ResponseWriter, r *http.Request) {}
 
 func (api *BookingApi) createOrder(w http.ResponseWriter, r *http.Request) {
+	log := logger.GetLogger()
 	var newOrder Order
-	json.NewDecoder(r.Body).Decode(&newOrder)
+
+	err := json.NewDecoder(r.Body).Decode(&newOrder)
+	if err != nil {
+		log.Errorf("createOrder - %s", err.Error())
+		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+
 	req := handlers.CreateOrderRequest{
 		HotelID:   newOrder.HotelID,
 		RoomID:    newOrder.RoomID,
@@ -68,19 +61,21 @@ func (api *BookingApi) createOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	resp, err := handlers.NewCreateOrderHandler(api.ordersRepo, api.roomAvailabilityRepo, api.logger).Handle(ctx, req)
+	resp, err := handlers.NewCreateOrderHandler(api.ordersRepo, api.roomAvailabilityRepo).Handle(ctx, req)
 	if err != nil {
 		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(newOrder)
-	api.logger.Info("Order successfully created:\n\tOrder: %v\n\tID: %d", newOrder, resp.OrderID)
-	a1, _ := api.ordersRepo.GetOrder(1)
-	a2, _ := api.ordersRepo.GetOrder(2)
-	api.logger.Info("Order1: %v", a1)
-	api.logger.Info("Order2: %v", a2)
+	err = json.NewEncoder(w).Encode(newOrder)
+	if err != nil {
+		log.Errorf("createOrder - %s", err.Error())
+		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+		return
+	}
+
+	log.Info("Order successfully created:\n\tOrder: %v\n\tID: %d", newOrder, resp.OrderID)
 }
 
 func (api *BookingApi) SetPreparedData() {

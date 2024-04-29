@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
-	"github.com/LKarataev/BookingAPI/internal/logger"
 )
 
 type CreateOrderCase struct {
@@ -39,8 +37,8 @@ func TestCreateOrder(t *testing.T) {
 				From:      time.Date(2024, time.Month(1), 2, 0, 0, 0, 0, time.UTC),
 				To:        time.Date(2024, time.Month(1), 5, 0, 0, 0, 0, time.UTC),
 			},
-			Result: 4,
-			Err:    fmt.Errorf("Data with HotelID=reddison, RoomID=lux, Date=%v not found in application memory", time.Date(2024, time.Month(1), 5, 0, 0, 0, 0, time.UTC)),
+			Result: 0,
+			Err:    fmt.Errorf("Hotel room is not available for selected dates"),
 		},
 		CreateOrderCase{
 			Ctx: context.Background(),
@@ -51,8 +49,20 @@ func TestCreateOrder(t *testing.T) {
 				From:      time.Date(2023, time.Month(1), 2, 0, 0, 0, 0, time.UTC),
 				To:        time.Date(2023, time.Month(1), 5, 0, 0, 0, 0, time.UTC),
 			},
-			Result: 4,
-			Err:    fmt.Errorf("Data with HotelID=reddison, RoomID=lux, Date=%v not found in application memory", time.Date(2023, time.Month(1), 2, 0, 0, 0, 0, time.UTC)),
+			Result: 0,
+			Err:    fmt.Errorf("Data with HotelID = reddison, RoomID = lux, Date = 2023/01/02 not found in application memory"),
+		},
+		CreateOrderCase{
+			Ctx: context.Background(),
+			Request: CreateOrderRequest{
+				HotelID:   "reddison",
+				RoomID:    "lux",
+				UserEmail: "guest@mail.ru",
+				From:      time.Date(2024, time.Month(1), 5, 0, 0, 0, 0, time.UTC),
+				To:        time.Date(2024, time.Month(1), 5, 0, 0, 0, 0, time.UTC),
+			},
+			Result: 0,
+			Err:    fmt.Errorf("Hotel room is not available for selected dates"),
 		},
 	}
 
@@ -62,14 +72,13 @@ func TestCreateOrder(t *testing.T) {
 func runCreateOrderCases(t *testing.T, cases []CreateOrderCase) {
 	ordersRepo := NewOrdersRepositoryMock()
 	roomAvailabilityRepo := NewRoomAvailabilityRepositoryMock()
-	logger := logger.NewApiLogger()
 
 	for idx, item := range cases {
 		caseName := fmt.Sprintf("case %d", idx)
 
 		expected := item.Result
 		expectedErr := item.Err
-		result, resultErr := NewCreateOrderHandler(ordersRepo, roomAvailabilityRepo, logger).Handle(item.Ctx, item.Request)
+		result, resultErr := NewCreateOrderHandler(ordersRepo, roomAvailabilityRepo).Handle(item.Ctx, item.Request)
 
 		if expectedErr != nil && resultErr != nil {
 			if resultErr.Error() != expectedErr.Error() {

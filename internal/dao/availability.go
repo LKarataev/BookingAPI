@@ -2,18 +2,21 @@ package dao
 
 import (
 	"fmt"
+	"sync"
 	"time"
+
+	"github.com/LKarataev/BookingAPI/internal/utils"
 )
 
 type RoomAvailability struct {
 	HotelID string
 	RoomID  string
 	Date    time.Time
-	Quota   int
 }
 
 type RoomAvailabilityRepository struct {
-	availability []RoomAvailability
+	mutex        sync.Mutex
+	availability map[RoomAvailability]int
 }
 
 type RoomAvailabilityRepositoryInterface interface {
@@ -22,35 +25,66 @@ type RoomAvailabilityRepositoryInterface interface {
 	SetPreparedData()
 }
 
-func (r *RoomAvailabilityRepository) SetPreparedData() {
-	r.availability = []RoomAvailability{
-		{"reddison", "lux", date(2024, 1, 1), 1},
-		{"reddison", "lux", date(2024, 1, 2), 1},
-		{"reddison", "lux", date(2024, 1, 3), 1},
-		{"reddison", "lux", date(2024, 1, 4), 1},
-		{"reddison", "lux", date(2024, 1, 5), 0},
+func (repo *RoomAvailabilityRepository) SetPreparedData() {
+	repo.availability = map[RoomAvailability]int{
+		RoomAvailability{
+			HotelID: "reddison",
+			RoomID:  "lux",
+			Date:    utils.Date(2024, 1, 1),
+		}: 0,
+		RoomAvailability{
+			HotelID: "reddison",
+			RoomID:  "lux",
+			Date:    utils.Date(2024, 1, 2),
+		}: 1,
+		RoomAvailability{
+			HotelID: "reddison",
+			RoomID:  "lux",
+			Date:    utils.Date(2024, 1, 3),
+		}: 1,
+		RoomAvailability{
+			HotelID: "reddison",
+			RoomID:  "lux",
+			Date:    utils.Date(2024, 1, 4),
+		}: 1,
+		RoomAvailability{
+			HotelID: "reddison",
+			RoomID:  "lux",
+			Date:    utils.Date(2024, 1, 5),
+		}: 0,
 	}
 }
 
-func (r *RoomAvailabilityRepository) GetQuota(HotelID string, RoomID string, Date time.Time) (int, error) {
-	for _, a := range r.availability {
-		if a.HotelID == HotelID && a.RoomID == RoomID && a.Date.Equal(Date) {
-			return a.Quota, nil
-		}
+func (repo *RoomAvailabilityRepository) GetQuota(HotelID string, RoomID string, Date time.Time) (int, error) {
+	room := RoomAvailability{
+		HotelID: HotelID,
+		RoomID:  RoomID,
+		Date:    Date,
 	}
-	return 0, fmt.Errorf("Data with HotelID=%d, RoomID=%d, Date=%T not found in application memory", HotelID, RoomID, Date)
+	if quota, ok := repo.availability[room]; ok {
+		return quota, nil
+	}
+	return 0, fmt.Errorf("Data with HotelID = %s , RoomID = %s, Date = %s not found in application memory", HotelID, RoomID, Date.Format("2006/01/02"))
 }
 
-func (r *RoomAvailabilityRepository) DecrementQuota(HotelID string, RoomID string, Date time.Time) error {
-	for i, a := range r.availability {
-		if a.HotelID == HotelID && a.RoomID == RoomID && a.Date.Equal(Date) {
-			r.availability[i].Quota--
-			return nil
-		}
+func (repo *RoomAvailabilityRepository) DecrementQuota(HotelID string, RoomID string, Date time.Time) error {
+	repo.mutex.Lock()
+	defer repo.mutex.Unlock()
+	room := RoomAvailability{
+		HotelID: HotelID,
+		RoomID:  RoomID,
+		Date:    Date,
 	}
-	return fmt.Errorf("Data with HotelID=%d, RoomID=%d, Date=%T not found in application memory", HotelID, RoomID, Date)
+	if quota, ok := repo.availability[room]; ok {
+		quota--
+		repo.availability[room] = quota
+		return nil
+	}
+	return fmt.Errorf("Data with HotelID = %s, RoomID = %s, Date = %s not found in application memory", HotelID, RoomID, Date.Format("2006/01/02"))
 }
 
-func date(year, month, day int) time.Time {
-	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+func NewRoomAvailabilityRepository() *RoomAvailabilityRepository {
+	repo := RoomAvailabilityRepository{}
+	repo.availability = map[RoomAvailability]int{}
+	return &repo
 }

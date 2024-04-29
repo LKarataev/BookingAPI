@@ -3,34 +3,43 @@ package logger
 import (
 	"fmt"
 	"log"
+	"sync"
 )
 
-type Logger interface {
-	InitLogger()
+type LoggerInterface interface {
+	Init(logger *log.Logger)
 	Info(format string, v ...any)
 	Errorf(format string, v ...any)
 }
 
-type apiLogger struct {
+type logger struct {
 	stdLogger *log.Logger
 }
 
-func NewApiLogger() *apiLogger {
-	var logger apiLogger
-	logger.InitLogger()
-	return &logger
+func (l *logger) Init(logger *log.Logger) {
+	l.stdLogger = logger
 }
 
-func (l *apiLogger) InitLogger() {
-	l.stdLogger = log.Default()
+func (l *logger) Info(format string, v ...any) {
+	msg := fmt.Sprintf(format, v...)
+	l.stdLogger.Printf("[Info]: %s\n", msg)
 }
 
-func (l *apiLogger) Errorf(format string, v ...any) {
+func (l *logger) Errorf(format string, v ...any) {
 	msg := fmt.Sprintf(format, v...)
 	l.stdLogger.Printf("[Error]: %s\n", msg)
 }
 
-func (l *apiLogger) Info(format string, v ...any) {
-	msg := fmt.Sprintf(format, v...)
-	l.stdLogger.Printf("[Info]: %s\n", msg)
+var loggerImpl LoggerInterface
+var lock sync.Mutex
+
+func GetLogger() LoggerInterface {
+	lock.Lock()
+	defer lock.Unlock()
+
+	if loggerImpl == nil {
+		loggerImpl = new(logger)
+		loggerImpl.Init(log.Default())
+	}
+	return loggerImpl
 }

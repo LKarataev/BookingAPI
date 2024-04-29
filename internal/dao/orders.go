@@ -2,11 +2,11 @@ package dao
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
 type Order struct {
-	ID        int
 	HotelID   string
 	RoomID    string
 	UserEmail string
@@ -15,7 +15,8 @@ type Order struct {
 }
 
 type OrdersRepository struct {
-	Orders []Order
+	mutex  sync.Mutex
+	orders map[int]Order
 }
 
 type OrdersRepositoryInterface interface {
@@ -23,25 +24,34 @@ type OrdersRepositoryInterface interface {
 	CreateOrder(HotelID string, RoomID string, UserEmail string, From time.Time, To time.Time) (int, error)
 }
 
-func (or *OrdersRepository) GetOrder(ID int) (Order, error) {
-	for _, order := range or.Orders {
-		if ID == order.ID {
-			return order, nil
-		}
+func (repo *OrdersRepository) GetOrder(ID int) (Order, error) {
+	if order, ok := repo.orders[ID]; ok {
+		return order, nil
 	}
-	return Order{}, fmt.Errorf("Order with ID=%d not found in application memory", ID)
+	return Order{}, fmt.Errorf("Order with ID = %d not found in application memory", ID)
 }
 
-func (or *OrdersRepository) CreateOrder(HotelID string, RoomID string, UserEmail string, From time.Time, To time.Time) (int, error) {
-	newID := int(len(or.Orders) + 1)
+func (repo *OrdersRepository) CreateOrder(HotelID string, RoomID string, UserEmail string, From time.Time, To time.Time) (int, error) {
+	repo.mutex.Lock()
+	defer repo.mutex.Unlock()
+	if HotelID == "" || RoomID == "" {
+		return 0, fmt.Errorf("Unacceptable HotelID or RoomID")
+	}
+
+	newID := int(len(repo.orders) + 1)
 	order := Order{
-		ID:        newID,
 		HotelID:   HotelID,
 		RoomID:    RoomID,
 		UserEmail: UserEmail,
 		From:      From,
 		To:        To,
 	}
-	or.Orders = append(or.Orders, order)
+	repo.orders[newID] = order
 	return newID, nil
+}
+
+func NewOrdersRepository() *OrdersRepository {
+	repo := OrdersRepository{}
+	repo.orders = map[int]Order{}
+	return &repo
 }
