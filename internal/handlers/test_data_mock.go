@@ -111,3 +111,5 @@ func (repo RoomAvailabilityRepositoryMock) DecrementQuota(HotelID string, RoomID
 	}
 	return nil
 }
+
+func (repo RoomAvailabilityRepositoryMock) SetPreparedData() {}

@@ -1,12 +1,3 @@
-// Ниже реализован сервис бронирования номеров в отеле. В предметной области
-// выделены два понятия: Order — заказ, который включает в себя даты бронирования
-// и контакты пользователя, и RoomAvailability — количество свободных номеров на
-// конкретный день.
-//
-// Задание:
-// - провести рефакторинг кода с выделением слоев и абстракций
-// - применить best-practices там где это имеет смысл
-// - исправить имеющиеся в реализации логические и технические ошибки и неточности
 package main
 
 import (
@@ -14,13 +5,19 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/LKarataev/BookingAPI/internal/dao"
 	"github.com/LKarataev/BookingAPI/internal/logger"
 	"github.com/LKarataev/BookingAPI/internal/service"
 )
 
 func main() {
 	logger := logger.NewApiLogger()
-	api := service.NewBookingApi(logger)
+	ordersRepo := &dao.OrdersRepository{}
+	roomAvailabilityRepo := &dao.RoomAvailabilityRepository{}
+
+	api := service.NewBookingApi(ordersRepo, roomAvailabilityRepo, logger)
+	api.SetPreparedData()
+
 	mux := api.ConfigureRouter()
 
 	logger.Info("Server listening on localhost:8080")

@@ -19,17 +19,16 @@ type RoomAvailabilityRepository struct {
 type RoomAvailabilityRepositoryInterface interface {
 	GetQuota(HotelID string, RoomID string, Date time.Time) (int, error)
 	DecrementQuota(HotelID string, RoomID string, Date time.Time) error
+	SetPreparedData()
 }
 
-func NewRoomAvailabilityRepository() *RoomAvailabilityRepository {
-	return &RoomAvailabilityRepository{
-		availability: []RoomAvailability{
-			{"reddison", "lux", date(2024, 1, 1), 1},
-			{"reddison", "lux", date(2024, 1, 2), 1},
-			{"reddison", "lux", date(2024, 1, 3), 1},
-			{"reddison", "lux", date(2024, 1, 4), 1},
-			{"reddison", "lux", date(2024, 1, 5), 0},
-		},
+func (r *RoomAvailabilityRepository) SetPreparedData() {
+	r.availability = []RoomAvailability{
+		{"reddison", "lux", date(2024, 1, 1), 1},
+		{"reddison", "lux", date(2024, 1, 2), 1},
+		{"reddison", "lux", date(2024, 1, 3), 1},
+		{"reddison", "lux", date(2024, 1, 4), 1},
+		{"reddison", "lux", date(2024, 1, 5), 0},
 	}
 }
 

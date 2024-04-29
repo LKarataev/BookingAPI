@@ -20,26 +20,30 @@ type Order struct {
 }
 
 type BookingApi struct {
-	ordersRepo           *dao.OrdersRepository
-	roomAvailabilityRepo *dao.RoomAvailabilityRepository
+	ordersRepo           dao.OrdersRepositoryInterface
+	roomAvailabilityRepo dao.RoomAvailabilityRepositoryInterface
 	logger               logger.Logger
 }
 
-func NewBookingApi(logger logger.Logger) BookingApi {
+func NewBookingApi(
+    ordersRepo           dao.OrdersRepositoryInterface,
+    roomAvailabilityRepo dao.RoomAvailabilityRepositoryInterface,
+	logger 		  		 logger.Logger,
+) BookingApi {
 	return BookingApi{
-		ordersRepo:           &dao.OrdersRepository{},
-		roomAvailabilityRepo: dao.NewRoomAvailabilityRepository(),
+		ordersRepo:           ordersRepo,
+		roomAvailabilityRepo: roomAvailabilityRepo,
 		logger:               logger,
 	}
 }
 
-func (api BookingApi) ConfigureRouter() *http.ServeMux {
+func (api *BookingApi) ConfigureRouter() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/orders", api.orders)
 	return mux
 }
 
-func (api BookingApi) orders(w http.ResponseWriter, r *http.Request) {
+func (api *BookingApi) orders(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		api.getOrders(w, r)
@@ -50,9 +54,9 @@ func (api BookingApi) orders(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (api BookingApi) getOrders(w http.ResponseWriter, r *http.Request) {}
+func (api *BookingApi) getOrders(w http.ResponseWriter, r *http.Request) {}
 
-func (api BookingApi) createOrder(w http.ResponseWriter, r *http.Request) {
+func (api *BookingApi) createOrder(w http.ResponseWriter, r *http.Request) {
 	var newOrder Order
 	json.NewDecoder(r.Body).Decode(&newOrder)
 	req := handlers.CreateOrderRequest{
@@ -73,4 +77,12 @@ func (api BookingApi) createOrder(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(newOrder)
 	api.logger.Info("Order successfully created:\n\tOrder: %v\n\tID: %d", newOrder, resp.OrderID)
+	a1, _ := api.ordersRepo.GetOrder(1)
+	a2, _ := api.ordersRepo.GetOrder(2)
+	api.logger.Info("Order1: %v", a1)
+	api.logger.Info("Order2: %v", a2)
+}
+
+func (api *BookingApi) SetPreparedData() {
+	api.roomAvailabilityRepo.SetPreparedData()
 }
