@@ -76,7 +76,9 @@ func (repo *RoomAvailabilityRepository) DecrementQuota(HotelID string, RoomID st
 		Date:    Date,
 	}
 	if quota, ok := repo.availability[room]; ok {
-		quota--
+		if quota > 0 {
+			quota--
+		}
 		repo.availability[room] = quota
 		return nil
 	}
@@ -85,6 +87,32 @@ func (repo *RoomAvailabilityRepository) DecrementQuota(HotelID string, RoomID st
 
 func NewRoomAvailabilityRepository() *RoomAvailabilityRepository {
 	repo := RoomAvailabilityRepository{}
-	repo.availability = map[RoomAvailability]int{}
+	repo.availability = map[RoomAvailability]int{
+		RoomAvailability{
+		HotelID: "reddison",
+		RoomID:  "lux",
+		Date:    utils.Date(2024, 1, 1),
+	}: 0,
+	RoomAvailability{
+		HotelID: "reddison",
+		RoomID:  "lux",
+		Date:    utils.Date(2024, 1, 2),
+	}: 1,
+	RoomAvailability{
+		HotelID: "reddison",
+		RoomID:  "lux",
+		Date:    utils.Date(2024, 1, 3),
+	}: 1,
+	RoomAvailability{
+		HotelID: "reddison",
+		RoomID:  "lux",
+		Date:    utils.Date(2024, 1, 4),
+	}: 1,
+	RoomAvailability{
+		HotelID: "reddison",
+		RoomID:  "lux",
+		Date:    utils.Date(2024, 1, 5),
+	}: 0,
+	}
 	return &repo
 }

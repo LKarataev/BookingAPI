@@ -1,4 +1,4 @@
-module github.com/LKarataev/BookingAPI
+module BookingAPI
 
 go 1.21.6
 

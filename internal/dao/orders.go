@@ -17,6 +17,7 @@ type Order struct {
 type OrdersRepository struct {
 	mutex  sync.Mutex
 	orders map[int]Order
+	// emails map[string]*Order
 }
 
 type OrdersRepositoryInterface interface {
@@ -30,6 +31,18 @@ func (repo *OrdersRepository) GetOrder(ID int) (Order, error) {
 	}
 	return Order{}, fmt.Errorf("Order with ID = %d not found in application memory", ID)
 }
+
+// func (repo *OrdersRepository) GetOrderByEmail(UserEmail string) ([]Order, error) {
+// 	repo.mutex.Lock()
+// 	defer repo.mutex.Unlock()
+// 	result := []Order{}
+// 	for _, order := range repo.orders {
+// 		if order.UserEmail == UserEmail {
+// 			result = append(result, order)
+// 		}
+// 	}
+// 	return result, nil
+// }
 
 func (repo *OrdersRepository) CreateOrder(HotelID string, RoomID string, UserEmail string, From time.Time, To time.Time) (int, error) {
 	repo.mutex.Lock()

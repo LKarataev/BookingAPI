@@ -67,6 +67,7 @@ func (h CreateOrderHandler) Handle(ctx context.Context, req CreateOrderRequest) 
 	for _, dayToBook := range daysToBook {
 		err := h.roomAvailabilityRepo.DecrementQuota(req.HotelID, req.RoomID, dayToBook)
 		if err != nil {
+			
 			log.Errorf("CreateOrderRequest error: %s", err)
 			return CreateOrderResponse{}, err
 		}
